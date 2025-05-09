@@ -9,15 +9,19 @@ services:
      - MONGODB_HOST=mongodb-container
      - MONGODB_PORT=27017
      - MONGODB_DATABASE=OrdersDatabase
-     # - UsersMicroserviceName=users-microservice  To call through gateway not directly to microservices
+     # - UsersMicroserviceName=users-microservice  //To call directly to microservices not with gateway
      - UsersMicroserviceName=apigateway
      # - UsersMicroservicePort=9090
      - UsersMicroservicePort=8080
-     # - ProductsMicroserviceName=products-microservice
+     # - ProductsMicroserviceName=products-microservice   //To call directly to microservices not with gateway
      - ProductsMicroserviceName=apigateway
      - ProductsMicroservicePort=8080
      - REDIS_HOST=redis
      - REDIS_PORT=6379
+     - RabbirMQ_HostName=rabbitmq
+     - RabbitMQ_UserName=user
+     - RabbitMQ_Password=password
+     - RabbitMQ_Port=5672
     ports:
      - "7000:8080"
     networks:
@@ -46,6 +50,10 @@ services:
     - MYSQL_DATABASE=ecommerceproductsdatabase
     - MYSQL_USER=root
     - MYSQL_PASSWORD=admin
+    - RabbirMQ_HostName=rabbitmq
+    - RabbitMQ_UserName=user
+    - RabbitMQ_Password=password
+    - RabbitMQ_Port=5672
    ports:
     - "6001:8080"
    networks:
@@ -114,6 +122,16 @@ services:
      networks:
       - ecommerce-network
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+     - "5672:5672"
+     - "15672:15672"
+    environment:
+     - RABBITMQ_DEFAULT_USER=user
+     - RABBITMQ_DEFAULT_PASS=password
+    networks:
+     - ecommerce-network
 networks: 
  orders-mongodb-network:
   driver: bridge       
