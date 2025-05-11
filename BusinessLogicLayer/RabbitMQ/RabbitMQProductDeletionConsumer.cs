@@ -7,13 +7,13 @@ using System.Text.Json;
 
 namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
 {
-    public class RabbitMQProductNameUpdateConsumer : IRabbitMQProductNameUpdateConsumer, IDisposable
+    public class RabbitMQProductDeletionConsumer : IDisposable, IRabbitMQProductDeletionConsumer
     {
         private readonly IConfiguration _configuration;
-        private readonly ILogger<RabbitMQProductNameUpdateConsumer> _logger;
+        private readonly ILogger<RabbitMQProductDeletionConsumer> _logger;
         private readonly IModel _channel;
         private readonly IConnection _connection;
-        public RabbitMQProductNameUpdateConsumer(IConfiguration configuration,ILogger<RabbitMQProductNameUpdateConsumer> logger)
+        public RabbitMQProductDeletionConsumer(IConfiguration configuration, ILogger<RabbitMQProductDeletionConsumer> logger)
         {
             _configuration = configuration;
             _logger = logger;
@@ -37,19 +37,19 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
 
         public void Consume()
         {
-            string routingKey = "product.update.name";
-            string queueName = "orders.product.update.name.queue";
-             //Create exchange
+            string routingKey = "product.delete";
+            string queueName = "orders.product.delete.queue";
+            //Create exchange
             string exchangeName = _configuration["RabbitMQ_Products_Exchange"]!;
             _channel.ExchangeDeclare(exchangeName,
                                 type: ExchangeType.Direct,
                                 durable: true);
 
             //Create Message Queue
-            _channel.QueueDeclare(queue:queueName,
+            _channel.QueueDeclare(queue: queueName,
                                   durable: true,
                                   exclusive: false,
-                                  autoDelete:false,
+                                  autoDelete: false,
                                   arguments: null);
 
             //Bind the message to exchange
@@ -63,16 +63,16 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
                 string message = Encoding.UTF8.GetString(body);
                 if (message != null)
                 {
-                    ProductNameUpdateMessage? productNameUpdateMessage = JsonSerializer.Deserialize<ProductNameUpdateMessage>(message);
-                    if(productNameUpdateMessage != null)
+                    ProductDeletionMessage? productDeletionMessage = JsonSerializer.Deserialize<ProductDeletionMessage>(message);
+                    if (productDeletionMessage != null)
                     {
-                        _logger.LogInformation($"Product name updated: {productNameUpdateMessage?.ProductID} " +
-                                              $"New name: {productNameUpdateMessage?.NewName} ");
+                        _logger.LogInformation($"Product is deleted: {productDeletionMessage.ProductID} " +
+                                                    $"Product name: {productDeletionMessage.ProductName} ");
                     }
                 }
             };
 
-            _channel.BasicConsume(queue:queueName,consumer:consumer,autoAck:true);
+            _channel.BasicConsume(queue: queueName, consumer: consumer, autoAck: true);
         }
 
         public void Dispose()
