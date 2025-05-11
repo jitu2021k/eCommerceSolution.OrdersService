@@ -18,10 +18,11 @@ services:
      - ProductsMicroservicePort=8080
      - REDIS_HOST=redis
      - REDIS_PORT=6379
-     - RabbirMQ_HostName=rabbitmq
+     - RabbitMQ_HostName=rabbitmq
      - RabbitMQ_UserName=user
      - RabbitMQ_Password=password
      - RabbitMQ_Port=5672
+     - RabbitMQ_Products_Exchange=product.exchange 
     ports:
      - "7000:8080"
     networks:
@@ -50,10 +51,11 @@ services:
     - MYSQL_DATABASE=ecommerceproductsdatabase
     - MYSQL_USER=root
     - MYSQL_PASSWORD=admin
-    - RabbirMQ_HostName=rabbitmq
+    - RabbitMQ_HostName=rabbitmq
     - RabbitMQ_UserName=user
     - RabbitMQ_Password=password
     - RabbitMQ_Port=5672
+    - RabbitMQ_Products_Exchange=product.exchange 
    ports:
     - "6001:8080"
    networks:
