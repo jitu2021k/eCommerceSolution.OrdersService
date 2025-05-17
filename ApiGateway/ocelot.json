@@ -105,6 +105,20 @@
         "Get",
         "Post",
         "Put",
+        "Options"
+      ],
+      "UpstreamScheme": "http"
+    },
+    {
+      "UpstreamPathTemplate": "/gateway/Products/{productID}/",
+      "DownstreamPathTemplate": "/api/Products/{productID}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "products-microservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamHttpMethod": [
         "Delete",
         "Options"
       ],

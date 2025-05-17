@@ -37,12 +37,21 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
 
         public void Consume()
         {
-            string routingKey = "product.update.name";
+            // string routingKey = "product.update.name";
+          
+            var headers = new Dictionary<string, object>()
+                {
+                    {"x-match","all" },
+                    { "event","product.update" },
+                    { "field", "name" },
+                    { "RowCount",1 }
+                };
+
             string queueName = "orders.product.update.name.queue";
              //Create exchange
             string exchangeName = _configuration["RabbitMQ_Products_Exchange"]!;
             _channel.ExchangeDeclare(exchangeName,
-                                type: ExchangeType.Direct,
+                                type: ExchangeType.Headers,
                                 durable: true);
 
             //Create Message Queue
@@ -53,7 +62,7 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
                                   arguments: null);
 
             //Bind the message to exchange
-            _channel.QueueBind(queue: queueName, exchange: exchangeName, routingKey: routingKey);
+            _channel.QueueBind(queue: queueName, exchange: exchangeName, routingKey: string.Empty,arguments:headers);
 
             EventingBasicConsumer consumer = new EventingBasicConsumer(_channel);
 
