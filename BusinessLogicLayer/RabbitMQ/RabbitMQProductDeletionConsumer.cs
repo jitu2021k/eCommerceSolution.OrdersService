@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using eCommerce.OrdersMicroservice.BusinessLogicLayer.DTO;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -11,12 +13,21 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<RabbitMQProductDeletionConsumer> _logger;
+        private readonly IDistributedCache _distributedCache;
         private readonly IModel _channel;
         private readonly IConnection _connection;
-        public RabbitMQProductDeletionConsumer(IConfiguration configuration, ILogger<RabbitMQProductDeletionConsumer> logger)
+        public RabbitMQProductDeletionConsumer(IConfiguration configuration, 
+                                               ILogger<RabbitMQProductDeletionConsumer> logger,
+                                               IDistributedCache distributedCache)
         {
             _configuration = configuration;
             _logger = logger;
+            _distributedCache = distributedCache;
+
+            Console.WriteLine($"RabbitMQ_HostName:{_configuration["RabbitMQ_HostName"]}");
+            Console.WriteLine($"RabbitMQ_UserName:{_configuration["RabbitMQ_UserName"]}");
+            Console.WriteLine($"RabbitMQ_Password:{_configuration["RabbitMQ_Password"]}");
+            Console.WriteLine($"RabbitMQ_Port:{_configuration["RabbitMQ_Port"]}");
 
             string hostName = _configuration["RabbitMQ_HostName"]!;
             string userName = _configuration["RabbitMQ_UserName"]!;
@@ -63,7 +74,7 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
 
             EventingBasicConsumer consumer = new EventingBasicConsumer(_channel);
 
-            consumer.Received += (sender, args) =>
+            consumer.Received += async (sender, args) =>
             {
                 byte[] body = args.Body.ToArray();
                 string message = Encoding.UTF8.GetString(body);
@@ -74,6 +85,7 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
                     {
                         _logger.LogInformation($"Product is deleted: {productDeletionMessage.ProductID} " +
                                                     $"Product name: {productDeletionMessage.ProductName} ");
+                        await HandleProductDeletion(productDeletionMessage.ProductID);
                     }
                 }
             };
@@ -81,6 +93,18 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
             _channel.BasicConsume(queue: queueName, consumer: consumer, autoAck: true);
         }
 
+        #region private Methods
+        private async Task HandleProductDeletion(Guid productID)
+        {
+
+           
+            
+            string cacheKeyToWrite = $"product:{productID}";
+
+            await _distributedCache.RemoveAsync(cacheKeyToWrite);
+        }
+
+        #endregion
         public void Dispose()
         {
             _channel.Dispose();

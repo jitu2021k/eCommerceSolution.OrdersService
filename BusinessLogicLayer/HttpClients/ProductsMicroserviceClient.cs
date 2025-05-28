@@ -82,8 +82,8 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.HttpClients
                 string productJson = JsonSerializer.Serialize<ProductDTO>(productDTO);
 
                 DistributedCacheEntryOptions options = new DistributedCacheEntryOptions()
-                    .SetAbsoluteExpiration(TimeSpan.FromSeconds(300))
-                    .SetSlidingExpiration(TimeSpan.FromSeconds(100));
+                    .SetAbsoluteExpiration(TimeSpan.FromSeconds(300));
+                    //.SetSlidingExpiration(TimeSpan.FromSeconds(100));
                 string cacheKeyToWrite = $"product:{productID}";
 
                 await _distributedCache.SetStringAsync(cacheKeyToWrite, productJson,options);

@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using eCommerce.OrdersMicroservice.BusinessLogicLayer.DTO;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -11,13 +13,23 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<RabbitMQProductNameUpdateConsumer> _logger;
+        private readonly IDistributedCache _distributedCache;
         private readonly IModel _channel;
         private readonly IConnection _connection;
-        public RabbitMQProductNameUpdateConsumer(IConfiguration configuration,ILogger<RabbitMQProductNameUpdateConsumer> logger)
+        public RabbitMQProductNameUpdateConsumer(IConfiguration configuration,
+                                                 ILogger<RabbitMQProductNameUpdateConsumer> logger,
+                                                 IDistributedCache distributedCache)
         {
             _configuration = configuration;
             _logger = logger;
 
+            Console.WriteLine($"RabbitMQ_HostName:{_configuration["RabbitMQ_HostName"]}");
+            Console.WriteLine($"RabbitMQ_UserName:{_configuration["RabbitMQ_UserName"]}");
+            Console.WriteLine($"RabbitMQ_Password:{_configuration["RabbitMQ_Password"]}");
+            Console.WriteLine($"RabbitMQ_Port:{_configuration["RabbitMQ_Port"]}");
+
+
+            _distributedCache = distributedCache;
             string hostName = _configuration["RabbitMQ_HostName"]!;
             string userName = _configuration["RabbitMQ_UserName"]!;
             string password = _configuration["RabbitMQ_Password"]!;
@@ -43,7 +55,6 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
                 {
                     {"x-match","all" },
                     { "event","product.update" },
-                    { "field", "name" },
                     { "RowCount",1 }
                 };
 
@@ -66,23 +77,44 @@ namespace eCommerce.OrdersMicroservice.BusinessLogicLayer.RabbitMQ
 
             EventingBasicConsumer consumer = new EventingBasicConsumer(_channel);
 
-            consumer.Received += (sender, args) =>
+            consumer.Received += async (sender, args) =>
             {
                 byte[] body = args.Body.ToArray();
                 string message = Encoding.UTF8.GetString(body);
                 if (message != null)
                 {
-                    ProductNameUpdateMessage? productNameUpdateMessage = JsonSerializer.Deserialize<ProductNameUpdateMessage>(message);
-                    if(productNameUpdateMessage != null)
+                    ProductDTO? productDTO = JsonSerializer.Deserialize<ProductDTO>(message);
+                    if(productDTO != null)
                     {
-                        _logger.LogInformation($"Product name updated: {productNameUpdateMessage?.ProductID} " +
-                                              $"New name: {productNameUpdateMessage?.NewName} ");
+                      await HandleProductUpdation(productDTO);
+
+                        //To DO: Update product cache
                     }
                 }
             };
 
             _channel.BasicConsume(queue:queueName,consumer:consumer,autoAck:true);
         }
+
+        #region private
+        
+        private async Task HandleProductUpdation(ProductDTO productDTO)
+        {
+
+            _logger.LogInformation($"Product name updated: {productDTO?.ProductID} " +
+                                            $"New name: {productDTO?.ProductName} ");
+
+            string productJson = JsonSerializer.Serialize<ProductDTO>(productDTO);
+
+            DistributedCacheEntryOptions options = new DistributedCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromSeconds(300))
+                .SetSlidingExpiration(TimeSpan.FromSeconds(100));
+            string cacheKeyToWrite = $"product:{productDTO.ProductID}";
+
+            await _distributedCache.SetStringAsync(cacheKeyToWrite, productJson, options);
+        }
+
+        #endregion
 
         public void Dispose()
         {
